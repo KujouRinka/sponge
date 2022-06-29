@@ -24,4 +24,8 @@ add_subdirectory ("${PROJECT_SOURCE_DIR}/tests")
 
 add_subdirectory ("${PROJECT_SOURCE_DIR}/doctests")
 
+file (GLOB_RECURSE source libsponge/*.*)
+include_directories(./)
+add_executable(test_main test.cc ${source})
+
 include (etc/tests.cmake)
