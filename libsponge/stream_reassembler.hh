@@ -7,6 +7,7 @@
 #include <string>
 
 #include <unordered_map>
+#include <vector>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
@@ -19,8 +20,14 @@ class StreamReassembler {
   size_t _unassembled_bytes;
 
   size_t _first_unassembled;
+  bool _eof;
 
-  std::unordered_map<size_t, std::string> _unassembled_data;
+  // ring buffer
+  std::vector<char> _unassembled_data;
+  // whether char in ring buffer to be reordered
+  std::vector<bool> _unassembled_valid;
+  // where ring buffer start
+  size_t _unassembled_start;
 
   size_t unassembled_cap() const;
 
