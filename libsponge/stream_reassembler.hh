@@ -29,6 +29,7 @@ class StreamReassembler {
   // where ring buffer start
   size_t _unassembled_start;
 
+ public:
   size_t unassembled_cap() const;
 
  public:
