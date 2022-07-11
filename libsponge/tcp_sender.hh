@@ -8,8 +8,19 @@
 
 #include <functional>
 #include <queue>
+#include <map>
 
 //! \brief The "sender" part of a TCP implementation.
+
+class Timer {
+ public:
+  Timer() : _time(0) {};
+  bool expired(size_t time) { return time <= _time; }
+  void add(size_t ms) { _time += ms; }
+  void reset(size_t time = 0) { _time = time; }
+ private:
+  size_t _time;
+};
 
 //! Accepts a ByteStream, divides it up into segments and sends the
 //! segments, keeps track of which segments are still in-flight,
@@ -25,12 +36,33 @@ class TCPSender {
 
   //! retransmission timer for the connection
   unsigned int _initial_retransmission_timeout;
+  unsigned int _time_out;
+  unsigned int _retrans_times{};
+
+  uint16_t _rwnd;   // receive window size
+  // uint8_t _dup_ack{0};
+
+  Timer _timer{};
 
   //! outgoing stream of bytes that have not yet been sent
   ByteStream _stream;
 
   //! the (absolute) sequence number for the next byte to be sent
   uint64_t _next_seqno{0};
+  uint64_t _last_acked{0};
+
+  std::map<uint64_t, TCPSegment> _retrans_buf{};
+
+  void retransmit(uint64_t seq);
+  void setFlag(TCPSegment &seg);
+
+  enum Stat {
+    CLOSED,
+    SYNC,
+    FIN,
+  };
+
+  Stat _stat{CLOSED};
 
  public:
   //! Initialize a TCPSender
