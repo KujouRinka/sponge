@@ -83,6 +83,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
+  if (_retrans_buf.empty())
+    return;
   _timer.add(ms_since_last_tick);
   if (_timer.expired(_time_out)) {  // expired and retransmission logic
     retransmit(_last_acked);
@@ -100,13 +102,12 @@ unsigned int TCPSender::consecutive_retransmissions() const {
 void TCPSender::send_empty_segment() {
   TCPSegment seg;
   seg.header().seqno = wrap(_next_seqno, _isn);
-  setFlag(seg);
+  // setFlag(seg);
   _segments_out.push(seg);
 }
 
 void TCPSender::retransmit(uint64_t seq) {
-  if (!_retrans_buf.empty())
-    _segments_out.push(prev(_retrans_buf.upper_bound(seq))->second);
+  _segments_out.push(prev(_retrans_buf.upper_bound(seq))->second);
 }
 
 void TCPSender::setFlag(TCPSegment &seg) {
