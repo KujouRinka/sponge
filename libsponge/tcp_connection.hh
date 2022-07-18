@@ -6,8 +6,11 @@
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
+#include <cstdlib>
+
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
+  int rand_id{rand()};
  private:
   TCPConfig _cfg;
   TCPReceiver _receiver{_cfg.recv_capacity};
@@ -19,10 +22,15 @@ class TCPConnection {
   //! Should the TCPConnection stay active (and keep ACKing)
   //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
   //! in case the remote TCPConnection doesn't know we've received its whole stream?
-  bool _linger_after_streams_finish{true};
+  bool _linger_after_streams_finish{true};  // mark active close
 
-  bool _alive{false};
+  bool _active{true};
   size_t _time_recv_pack{0};
+
+  void flushSender();
+  void sendRST(bool with_error = true);
+  void setAckAndWin(TCPSegment &seg);
+  void ackSeg(const TCPSegment &seg);
 
  public:
   //! \name "Input" interface for the writer
