@@ -21,6 +21,11 @@ class TCPReceiver {
   StreamReassembler _reassembler;
 
  public:
+  bool listen() { return !ackno().has_value(); }
+  bool syn_recv() { return ackno().has_value() && !stream_out().input_ended(); }
+  bool fin_recv() { return stream_out().input_ended(); }
+
+ public:
   //! \brief Construct a TCP receiver
   //!
   //! \param capacity the maximum number of bytes that the receiver will

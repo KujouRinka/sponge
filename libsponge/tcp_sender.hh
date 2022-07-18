@@ -65,6 +65,26 @@ class TCPSender {
   Stat _stat{CLOSED};
 
  public:
+  uint64_t lastAcked() { return _last_acked; }
+
+  bool closed() { return next_seqno_absolute() == 0; }
+  bool syn_sent() { return next_seqno_absolute() > 0 && next_seqno_absolute() == bytes_in_flight(); }
+  bool syn_acked() {
+    return (next_seqno_absolute() > bytes_in_flight() && !stream_in().eof())
+        || (stream_in().eof() && next_seqno_absolute() < stream_in().bytes_written() + 2);
+  }
+  bool fin_sent() {
+    return stream_in().eof()
+        && next_seqno_absolute() == stream_in().bytes_written() + 2
+        && bytes_in_flight() > 0;
+  }
+  bool fin_acked() {
+    return stream_in().eof()
+        && next_seqno_absolute() == stream_in().bytes_written() + 2
+        && bytes_in_flight() == 0;
+  }
+
+ public:
   //! Initialize a TCPSender
   TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
             const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,
