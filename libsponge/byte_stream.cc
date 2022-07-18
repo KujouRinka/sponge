@@ -41,8 +41,8 @@ string ByteStream::peek_output(const size_t len) const {
   if (_p_head <= _cap - _buf_size) {
     ret.append(_buffer, _p_head, peek_len);
   } else {
-    ret.append(_buffer, _p_head);
-    ret.append(_buffer, 0, peek_len - (_cap - _p_head));
+    ret.append(_buffer, _p_head, min(_cap - _p_head, peek_len));
+    ret.append(_buffer, 0, (peek_len > _cap - _p_head ? peek_len - (_cap - _p_head) : 0));
   }
   return ret;
 }
@@ -65,8 +65,8 @@ std::string ByteStream::read(const size_t len) {
   if (_p_head <= _cap - _buf_size) {
     ret.append(_buffer, _p_head, read_len);
   } else {
-    ret.append(_buffer, _p_head);
-    ret.append(_buffer, 0, read_len - (_cap - _p_head));
+    ret.append(_buffer, _p_head, min(_cap - _p_head, read_len));
+    ret.append(_buffer, 0, (read_len > _cap - _p_head ? read_len - (_cap - _p_head) : 0));
   }
   _p_head = (_p_head + read_len) % _cap;
   _buf_size -= read_len;
