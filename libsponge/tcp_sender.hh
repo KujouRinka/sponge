@@ -8,7 +8,7 @@
 
 #include <functional>
 #include <queue>
-#include <map>
+// #include <map>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -51,7 +51,8 @@ class TCPSender {
   uint64_t _next_seqno{0};
   uint64_t _last_acked{0};
 
-  std::map<uint64_t, TCPSegment> _retrans_buf{};
+  // std::map<uint64_t, TCPSegment> _retrans_buf{};
+  std::queue<TCPSegment> _retrans_buf{};
 
   void retransmit(uint64_t seq);
   void setFlag(TCPSegment &seg);

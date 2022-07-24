@@ -29,6 +29,8 @@ uint64_t TCPSender::bytes_in_flight() const {
 void TCPSender::fill_window() {
   // fill receive window full,
   // SYN and FIN take place of window
+  if (_stat == FIN)
+    return;
   string data;
   uint64_t remain_wnd;
   uint16_t rwnd = max<uint16_t>(_rwnd, 1);
@@ -43,7 +45,8 @@ void TCPSender::fill_window() {
     seg.payload() = Buffer(std::move(data));
     if (seg.length_in_sequence_space() == 0)
       break;
-    _retrans_buf[_next_seqno] = seg;
+    // _retrans_buf[_next_seqno] = seg;
+    _retrans_buf.push(seg);
     _next_seqno += seg.length_in_sequence_space();
     _segments_out.push(std::move(seg));
   }
@@ -57,12 +60,18 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     return;
   } else if (_last_acked < absolute_ack) {   // ack move ahead
     _last_acked = absolute_ack;
-    auto lb = _retrans_buf.lower_bound(absolute_ack);
-    if (lb->first == absolute_ack || (lb != _retrans_buf.begin()
-        && prev(lb)->first + prev(lb)->second.length_in_sequence_space() == absolute_ack)) {
-      _retrans_buf.erase(_retrans_buf.begin(), lb);
-    } else {
-      _retrans_buf.erase(_retrans_buf.begin(), prev(lb));
+    // auto lb = _retrans_buf.lower_bound(absolute_ack);
+    // if (lb->first == absolute_ack || (lb != _retrans_buf.begin()
+    //     && prev(lb)->first + prev(lb)->second.length_in_sequence_space() == absolute_ack)) {
+    //   _retrans_buf.erase(_retrans_buf.begin(), lb);
+    // } else {
+    //   _retrans_buf.erase(_retrans_buf.begin(), prev(lb));
+    // }
+    while (!_retrans_buf.empty()) {
+      auto absolute_seq = unwrap(_retrans_buf.front().header().seqno, _isn, absolute_ack);
+      if (absolute_seq + _retrans_buf.front().length_in_sequence_space() > absolute_ack)
+        break;
+      _retrans_buf.pop();
     }
     _rwnd = window_size;  // regard windows size as 1 if it is 0
     _timer.reset();
@@ -107,7 +116,9 @@ void TCPSender::send_empty_segment() {
 }
 
 void TCPSender::retransmit(uint64_t seq) {
-  _segments_out.push(prev(_retrans_buf.upper_bound(seq))->second);
+  DUMMY_CODE(seq);
+  // _segments_out.push(prev(_retrans_buf.upper_bound(seq))->second);
+  _segments_out.push(_retrans_buf.front());
 }
 
 void TCPSender::setFlag(TCPSegment &seg) {
