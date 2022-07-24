@@ -81,7 +81,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     _sender.send_empty_segment();
     return;
   }
-
   if (_sender.closed() && _receiver.listen()) { // LISTEN
     if (!seg.header().syn) {   // no SYN
       d.cancel();
@@ -90,54 +89,83 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();
+    // if (seg.header().syn)
+    //   clog << rand_id << ": LISTEN ---> SYN_RECEIVED" << endl;
     return;
   } else if (_sender.syn_sent() && _receiver.listen()) {  // SYN_SENT
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();
+    // if (seg.header().syn) {
+    //   if (seg.header().ack) {
+    //     clog << rand_id << ": SYN_SENT ---> ESTABLISHED" << endl;
+    //   } else {
+    //     clog << rand_id << ": SYN_SENT ---> SYN_RECEIVED" << endl;
+    //   }
+    // }
   } else if (_sender.syn_sent() && _receiver.syn_recv()) {  // SYN_RECV
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();
+    // if (_sender.syn_acked() && _receiver.syn_recv())
+    //   clog << rand_id << ": SYN_RECEIVED ---> ESTABLISHED" << endl;
   } else if (_sender.syn_acked() && _receiver.syn_recv()) { // ESTABLISHED
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();
     if (seg.header().fin) {
+      // clog << rand_id << ": ESTABLISHED ---> CLOSE_WAIT" << endl;
       _linger_after_streams_finish = false;
     }
   } else if (_sender.syn_acked() && _receiver.fin_recv()) { // CLOSE_WAIT
+    // clog << "in CLOSE_WAIT with ack: " << seg.header().ackno.raw_value() << endl;
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();  // continue transferring data
   } else if (_sender.fin_sent() && _receiver.fin_recv() && !_linger_after_streams_finish) {  // LAST_ACK
+    // clog << rand_id << ": CLOSE_WAIT ---> LAST_ACK" << endl;
     ackSeg(seg);
     _receiver.segment_received(seg);
     if (_sender.fin_acked() && _receiver.fin_recv()) {
-      d.cancel();
       _active = false;
+      // clog << rand_id << ": LAST_ACK ---> CLOSED" << endl;
     }
   } else if (_sender.fin_sent() && _receiver.syn_recv()) {  // FIN_WAIT_1
     ackSeg(seg);
+    // clog << rand_id << ": ESTABLISHED ---> FIN_WAIT_1" << endl;
     _receiver.segment_received(seg);
+    // if (seg.header().fin) {
+    //   if (seg.header().ack)
+    //     clog << rand_id << ": FIN_WAIT_1 ---> TIME_WAIT" << endl;
+    //   else
+    //     clog << rand_id << ": FIN_WAIT_1 ---> CLOSING" << endl;
+    // } else if (seg.header().ack) {
+    //   if (_sender.fin_acked() && _receiver.syn_recv())
+    //     clog << rand_id << ": FIN_WAIT_1 ---> FIN_WAIT_2 with ack: " << seg.header().ackno.raw_value() << endl;
+    //   else
+    //     clog << rand_id << ": in FIN_WAIT_1: ack previous: " << seg.header().ackno.raw_value() << endl;
+    // }
   } else if (_sender.fin_acked() && _receiver.syn_recv()) { // FIN_WAIT_2
     ackSeg(seg);
     _receiver.segment_received(seg);
+    // if (_sender.fin_acked() && _receiver.fin_recv())
+    //   clog << rand_id << ": FIN_WAIT_2 ---> TIME_WAIT" << endl;
   } else if (_sender.fin_sent() && _receiver.fin_recv()) {  // CLOSING
     ackSeg(seg);
     _receiver.segment_received(seg);
+    // if (_sender.fin_acked() && _receiver.fin_recv())
+    //   clog << rand_id << ": CLOSING ---> TIME_WAIT" << endl;
   } else if (_sender.fin_acked() && _receiver.fin_recv() && _linger_after_streams_finish) { // TIME_WAIT
     ackSeg(seg);
     _receiver.segment_received(seg);
     _sender.fill_window();
+    // clog << rand_id << ": FIN received in TIME_WAIT, retransmit it" << endl;
   } else if (_sender.fin_acked() && _receiver.fin_recv()) { // CLOSED
-    d.cancel();
     return;
   } else {  // ERROR
     sendRST();
-    return;
   }
-  // send ACK for non-empty segment
+  _sender.fill_window();
   if (seg.length_in_sequence_space() > 0)
     _sender.send_empty_segment();
 }
@@ -187,6 +215,7 @@ void TCPConnection::end_input_stream() {
 
 void TCPConnection::connect() {
   _sender.fill_window();  // transfer to SYN_SENT
+  // clog << rand_id << ": try: CLOSED ---> SYN_SENT" << endl;
   flushSender();
 }
 
@@ -200,6 +229,7 @@ void TCPConnection::flushSender() {
 }
 
 void TCPConnection::sendRST(bool with_error) {
+  // clog << rand_id << ": RST sent !!!" << endl;
   TCPSegment rst_seg;
   rst_seg.header().rst = true;
   setAckAndWin(rst_seg);
@@ -215,8 +245,8 @@ void TCPConnection::setAckAndWin(TCPSegment &seg) {
   if (_receiver.ackno().has_value()) {
     seg.header().ack = true;
     seg.header().ackno = _receiver.ackno().value();
-    seg.header().win = _receiver.window_size();
   }
+  seg.header().win = _receiver.window_size();
 }
 
 void TCPConnection::ackSeg(const TCPSegment &seg) {

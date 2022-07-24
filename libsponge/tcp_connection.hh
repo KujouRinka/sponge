@@ -6,11 +6,11 @@
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
-#include <cstdlib>
+// #include <random>
 
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
-  int rand_id{rand()};
+ // unsigned int rand_id{std::random_device()()};
  private:
   TCPConfig _cfg;
   TCPReceiver _receiver{_cfg.recv_capacity};
