@@ -6,31 +6,38 @@
 #include <cstdint>
 #include <string>
 
-#include <unordered_map>
-#include <vector>
+#include <set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
  private:
   // Your code here -- add private members as necessary.
+  struct DataBlock {
+    size_t start_idx{0};
+    std::string data{};
+    bool operator<(const DataBlock &rhs) const { return start_idx < rhs.start_idx; }
+    size_t size() const { return data.size(); }
+    void swap(DataBlock &rhs) {
+      std::swap(start_idx, rhs.start_idx);
+      data.swap(rhs.data);
+    }
+  };
 
   ByteStream _output;  //!< The reassembled in-order byte stream
   size_t _capacity;    //!< The maximum number of bytes
-  size_t _unassembled_bytes;
+  size_t _unassembled_bytes{0};
+  size_t _first_unassembeld{0};
+  std::set<DataBlock> _unassembled_blocks{};
 
-  size_t _first_unassembled;
-  bool _eof;
+  bool _eof{false};
 
-  // ring buffer
-  std::vector<char> _unassembled_data;
-  // whether char in ring buffer to be reordered
-  std::vector<bool> _unassembled_valid;
-  // where ring buffer start
-  size_t _unassembled_start;
+  bool merge_block_and_del(DataBlock &lhs, const DataBlock &rhs);
 
  public:
+  // actually it is the windows size
   size_t unassembled_cap() const;
+  void eof_logic(bool eof, bool trunc);
 
  public:
   //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

@@ -15,49 +15,52 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity)
-    : _output(capacity), _capacity(capacity), _unassembled_bytes(0),
-      _first_unassembled(0), _eof(false), _unassembled_data(capacity),
-      _unassembled_valid(capacity, false), _unassembled_start(0) {}
+    : _output(capacity), _capacity(capacity) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-  if (_output.eof())
+  DataBlock new_data;
+  if (_output.eof() || index > _first_unassembeld + unassembled_cap())  // first byte in first unacceptable
     return;
-  size_t first_unacceptable = _first_unassembled + unassembled_cap();
-  size_t trunc_front = index < _first_unassembled ? _first_unassembled - index : 0;
-  size_t trunc_back =
-      index + data.size() > first_unacceptable ?
-      index + data.size() - first_unacceptable : 0;
-  if (trunc_front + trunc_back > data.size())
+  if (index + data.size() <= _first_unassembeld) {  // last byte in byte_stream
+    eof_logic(eof, false);
     return;
-  size_t buf_to_start = _unassembled_start +
-      (index < _first_unassembled ? 0 : index - _first_unassembled);
-  for_each(data.begin() + trunc_front, data.end() - trunc_back, [this, &buf_to_start](char ch) {
-    if (!_unassembled_valid[buf_to_start]) {
-      _unassembled_data[buf_to_start] = ch;
-      _unassembled_valid[buf_to_start] = true;
-      ++_unassembled_bytes;
-    }
-    buf_to_start = (buf_to_start + 1) % _capacity;
-  });
-  buf_to_start = _unassembled_start;
-  string write_data;
-  write_data.reserve(_capacity);
-  while (_unassembled_bytes && _unassembled_valid[buf_to_start]) {
-    write_data.push_back(_unassembled_data[buf_to_start]);
-    _unassembled_valid[buf_to_start] = false;
-    --_unassembled_bytes;
-    _unassembled_start = (_unassembled_start + 1) % _capacity;
-    buf_to_start = (buf_to_start + 1) % _capacity;
   }
-  _first_unassembled += write_data.size();
-  _output.write(write_data);
-  if (eof && trunc_back == 0)
-    _eof = true;
-  if (_eof && _unassembled_bytes == 0)
-    _output.end_input();
+
+  size_t front_trunc = _first_unassembeld > index ? _first_unassembeld - index : 0;
+  size_t back_trunc = index + data.size() > _first_unassembeld + unassembled_cap() ?
+                      index + data.size() - _first_unassembeld - unassembled_cap() : 0;
+  new_data.data.assign(data.begin() + front_trunc, data.end() - back_trunc);
+  new_data.start_idx = front_trunc ? _first_unassembeld : index;
+
+  // merge logic
+  while (true) {
+    auto inserter_it = _unassembled_blocks.lower_bound(new_data);
+    if (inserter_it != _unassembled_blocks.end() && inserter_it->start_idx == new_data.start_idx) {
+      while (inserter_it != _unassembled_blocks.end() && merge_block_and_del(new_data, *inserter_it++)) {}
+      break;
+    } else { // inserter_it->start_idx > new_data.start_idx
+      if (inserter_it != _unassembled_blocks.begin())
+        merge_block_and_del(new_data, *prev(inserter_it));
+      while (inserter_it != _unassembled_blocks.end() && merge_block_and_del(new_data, *inserter_it++)) {}
+      break;
+    }
+  }
+  _unassembled_bytes += new_data.data.size();
+  _unassembled_blocks.insert(std::move(new_data));
+
+  // ...
+  if (_unassembled_bytes && _first_unassembeld == _unassembled_blocks.begin()->start_idx) {
+    const DataBlock &block_to_write = *_unassembled_blocks.begin();
+    size_t written_bytes = _output.write(block_to_write.data);
+    _unassembled_bytes -= written_bytes;
+    _first_unassembeld += written_bytes;
+    _unassembled_blocks.erase(_unassembled_blocks.begin());
+  }
+
+  eof_logic(eof, back_trunc);
 }
 
 size_t StreamReassembler::unassembled_bytes() const {
@@ -68,6 +71,37 @@ bool StreamReassembler::empty() const {
   return _unassembled_bytes == 0;
 }
 
+// actually it is the windows size
 size_t StreamReassembler::unassembled_cap() const {
   return _capacity - _output.buffer_size();
+}
+
+// merge data from rhs to lhs, delete rhs in
+// _unassembled_blocks and set _unassembled_bytes.
+// return true if it really did merge job.
+bool StreamReassembler::merge_block_and_del(DataBlock &lhs, const DataBlock &rhs) {
+  DataBlock &front = lhs < rhs ? lhs : const_cast<DataBlock &>(rhs);
+  DataBlock &back = lhs < rhs ? const_cast<DataBlock &>(rhs) : lhs;
+  if (front.start_idx + front.size() < back.start_idx)
+    return false;
+  _unassembled_bytes -= rhs.size();
+  DataBlock tmp;
+  tmp.start_idx = front.start_idx;
+  if (front.start_idx + front.size() >= back.start_idx + back.size()) {
+    tmp.data = std::move(front.data);
+  } else {
+    size_t trunc = front.start_idx + front.size() - back.start_idx;
+    tmp.data.reserve(lhs.size() + rhs.size() - trunc);
+    tmp.data.append(front.data.begin(), front.data.end()).append(back.data.begin() + trunc, back.data.end());
+  }
+  _unassembled_blocks.erase(rhs);
+  lhs.swap(tmp);
+  return true;
+}
+
+void StreamReassembler::eof_logic(bool eof, bool trunc) {
+  if (eof && !trunc)
+    _eof = true;
+  if (_eof && _unassembled_bytes == 0)
+    _output.end_input();
 }
