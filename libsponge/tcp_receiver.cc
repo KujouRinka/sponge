@@ -22,7 +22,6 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if (seg.header().syn) {
       _isn.emplace(seg.header().seqno);
     } else {
-      cerr << "TCPReceiver: bad syn" << endl;
       return;
     }
   }
