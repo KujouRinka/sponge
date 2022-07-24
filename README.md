@@ -16,23 +16,31 @@ For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.ed
 - Ubuntu 20.04.3 LTS
 - Intel(R) Core(TM) i7-10710U CPU @ 1.10GHz × 12
 
-目前的性能，由于我实现的 `byte_stream` 性能问题，benchmark 结果为：
+~~目前的性能，由于我实现的 `byte_stream` 性能问题，benchmark 结果为：~~
 
 ```
 CPU-limited throughput                : 0.39 Gbit/s
 CPU-limited throughput with reordering: 0.37 Gbit/s
 ```
 
-若替换为讲义中提到的高效 `byte_stream`，结果为：
+~~若替换为讲义中提到的高效 `byte_stream`，结果为：~~
 
 ```
-CPU-limited throughput                : 2.86 Gbit/s
-CPU-limited throughput with reordering: 2.51 Gbit/s
+CPU-limited throughput                : 3.02 Gbit/s
+CPU-limited throughput with reordering: 2.44 Gbit/s
 ```
 
-后续研究透彻后会将修改后的 `byte_stream` 补上。
+~~后续研究透彻后会将修改后的 `byte_stream` 补上。~~
 
-- [ ] 优化 `byte_stream` 实现
+已优化 `byte_stream` 具体性能，见下：
+
+- [x] 优化 `byte_stream` 实现
+
+最终优化后的性能如下：
+```
+CPU-limited throughput                : 4.64 Gbit/s
+CPU-limited throughput with reordering: 3.61 Gbit/s
+```
 
 ## Sponge quickstart
 

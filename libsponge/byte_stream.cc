@@ -1,7 +1,5 @@
 #include "byte_stream.hh"
 
-#include <algorithm>
-
 // Dummy implementation of a flow-controlled in-memory byte stream.
 
 // For Lab 0, please replace with a real implementation that passes the
@@ -14,63 +12,41 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-ByteStream::ByteStream(const size_t capacity)
-    : _error(false), _end(false), _p_head(0),
-      _p_tail(0), _buf_size(0), _cap(capacity),
-      _all_read(0), _all_write(0), _buffer(capacity, 0) {
-}
+ByteStream::ByteStream(const size_t capacity) : _cap(capacity) {}
 
 size_t ByteStream::write(const string &data) {
-  if (_end)
-    return 0;
-  size_t sz = min(data.size(), remaining_capacity());
-  for_each(data.begin(), data.begin() + sz, [this](char ch) {
-    _buffer[_p_tail] = ch;
-    _p_tail = (_p_tail + 1) % _cap;
-  });
-  _buf_size += sz;
-  _all_write += sz;
-  return sz;
+  size_t write_len = min(data.length(), _cap - _buffer.size());
+  string s;
+  s.assign(data.begin(), data.begin() + write_len);
+  _buffer.append(std::move(s));
+  _all_write += write_len;
+  return write_len;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-  size_t peek_len = min(len, _buf_size);
+  size_t peek_len = min(len, _buffer.size());
   string ret;
   ret.reserve(peek_len);
-  if (_p_head <= _cap - _buf_size) {
-    ret.append(_buffer, _p_head, peek_len);
-  } else {
-    ret.append(_buffer, _p_head, min(_cap - _p_head, peek_len));
-    ret.append(_buffer, 0, (peek_len > _cap - _p_head ? peek_len - (_cap - _p_head) : 0));
+  for (size_t idx = 0; peek_len != 0; ++idx) {
+    auto &buf = _buffer.buffers()[idx];
+    size_t sz = min(peek_len, buf.size());
+    ret.append(buf.str().begin(), buf.str().begin() + sz);
+    peek_len -= sz;
   }
   return ret;
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) {
-  size_t pop_len = min(len, _buf_size);
-  _p_head = (_p_head + pop_len) % _cap;
-  _buf_size -= pop_len;
+  size_t pop_len = min(len, _buffer.size());
   _all_read += pop_len;
+  _buffer.remove_prefix(pop_len);
 }
 
-//! Read (i.e., copy and then pop) the next "len" bytes of the stream
-//! \param[in] len bytes will be popped and returned
-//! \returns a string
-std::string ByteStream::read(const size_t len) {
-  size_t read_len = min(len, _buf_size);
-  string ret;
-  ret.reserve(read_len);
-  if (_p_head <= _cap - _buf_size) {
-    ret.append(_buffer, _p_head, read_len);
-  } else {
-    ret.append(_buffer, _p_head, min(_cap - _p_head, read_len));
-    ret.append(_buffer, 0, (read_len > _cap - _p_head ? read_len - (_cap - _p_head) : 0));
-  }
-  _p_head = (_p_head + read_len) % _cap;
-  _buf_size -= read_len;
-  _all_read += read_len;
+string ByteStream::read(const size_t len) {
+  string ret = peek_output(len);
+  pop_output(len);
   return ret;
 }
 
@@ -83,15 +59,15 @@ bool ByteStream::input_ended() const {
 }
 
 size_t ByteStream::buffer_size() const {
-  return _buf_size;
+  return _buffer.size();
 }
 
 bool ByteStream::buffer_empty() const {
-  return _buf_size == 0;
+  return _buffer.size() == 0;
 }
 
 bool ByteStream::eof() const {
-  return _buf_size == 0 && _end;
+  return buffer_empty() && _end;
 }
 
 size_t ByteStream::bytes_written() const {
@@ -103,5 +79,5 @@ size_t ByteStream::bytes_read() const {
 }
 
 size_t ByteStream::remaining_capacity() const {
-  return _cap - _buf_size;
+  return _cap - _buffer.size();
 }

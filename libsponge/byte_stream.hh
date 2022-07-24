@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "util/buffer.hh"
+
 //! \brief An in-order byte stream.
 
 //! Bytes are written on the "input" side and read from the "output"
@@ -11,22 +13,12 @@
 class ByteStream {
  private:
   // Your code here -- add private members as necessary.
-
-  // Hint: This doesn't need to be a sophisticated data structure at
-  // all, but if any of your tests are taking longer than a second,
-  // that's a sign that you probably want to keep exploring
-  // different approaches.
-
-  bool _error;  //!< Flag indicating that the stream suffered an error.
-  bool _end;
-  size_t _p_head;
-  size_t _p_tail;
-  size_t _buf_size;
+  BufferList _buffer = {};
   size_t _cap;
-
-  size_t _all_read;
-  size_t _all_write;
-  std::string _buffer;
+  size_t _all_read{0};
+  size_t _all_write{0};
+  bool _end{false};
+  bool _error{false};  //!< Flag indicating that the stream suffered an error.
 
  public:
   //! Construct a stream with room for `capacity` bytes.
