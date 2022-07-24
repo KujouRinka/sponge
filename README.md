@@ -1,5 +1,39 @@
 For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.edu/class/cs144/vm_howto).
 
+### 碎碎念
+
+目前实现了直到 lab4 的所有内容，后续看情况补全 lab5 和 lab6 的代码。
+
+目前可以在此拓展的有：
+
+- [ ] 添加快速重传
+- [ ] 添加 Tahoe 或者 Reno
+- [ ] 添加 SACK
+- [ ] 实现 ACK 捎带
+
+个人机器的配置：
+
+- Ubuntu 20.04.3 LTS
+- Intel(R) Core(TM) i7-10710U CPU @ 1.10GHz × 12
+
+目前的性能，由于我实现的 `byte_stream` 性能问题，benchmark 结果为：
+
+```
+CPU-limited throughput                : 0.39 Gbit/s
+CPU-limited throughput with reordering: 0.37 Gbit/s
+```
+
+若替换为讲义中提到的高效 `byte_stream`，结果为：
+
+```
+CPU-limited throughput                : 2.86 Gbit/s
+CPU-limited throughput with reordering: 2.51 Gbit/s
+```
+
+后续研究透彻后会将修改后的 `byte_stream` 补上。
+
+- [ ] 优化 `byte_stream` 实现
+
 ## Sponge quickstart
 
 To set up your build directory:
