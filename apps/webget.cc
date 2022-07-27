@@ -18,7 +18,7 @@ void get_URL(const string &host, const string &path) {
   // (not just one call to read() -- everything) until you reach
   // the "eof" (end of file).
 
-  CS144TCPSocket conn = CS144TCPSocket();
+  FullStackSocket conn = FullStackSocket();
   conn.connect(Address(host, "http"));
   conn.write("GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n");
   while (true) {
