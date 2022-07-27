@@ -13,7 +13,7 @@
 
 // You will need to add private members to the class declaration in `network_interface.hh`
 
-template <typename... Targs>
+template<typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
@@ -22,24 +22,24 @@ using namespace std;
 //! \param[in] ip_address IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address)
     : _ethernet_address(ethernet_address), _ip_address(ip_address) {
-    cerr << "DEBUG: Network interface has Ethernet address " << to_string(_ethernet_address) << " and IP address "
-         << ip_address.ip() << "\n";
+  cerr << "DEBUG: Network interface has Ethernet address " << to_string(_ethernet_address) << " and IP address "
+       << ip_address.ip() << "\n";
 }
 
 //! \param[in] dgram the IPv4 datagram to be sent
 //! \param[in] next_hop the IP address of the interface to send it to (typically a router or default gateway, but may also be another host if directly connected to the same network as the destination)
 //! (Note: the Address type can be converted to a uint32_t (raw 32-bit IP address) with the Address::ipv4_numeric() method.)
 void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Address &next_hop) {
-    // convert IP address of next hop to raw 32-bit representation (used in ARP header)
-    const uint32_t next_hop_ip = next_hop.ipv4_numeric();
+  // convert IP address of next hop to raw 32-bit representation (used in ARP header)
+  const uint32_t next_hop_ip = next_hop.ipv4_numeric();
 
-    DUMMY_CODE(dgram, next_hop, next_hop_ip);
+  DUMMY_CODE(dgram, next_hop, next_hop_ip);
 }
 
 //! \param[in] frame the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
-    DUMMY_CODE(frame);
-    return {};
+  DUMMY_CODE(frame);
+  return {};
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
