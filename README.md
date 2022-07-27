@@ -1,5 +1,16 @@
 For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.edu/class/cs144/vm_howto).
 
+### 进度
+
+- [x] lab0: networking warmup
+- [x] lab1: stitching substrings into a byte stream
+- [x] lab2: the TCP receiver
+- [x] lab3: the TCP sender
+- [x] lab4: the TCP connection
+- [x] lab5: the network interface
+- [ ] lab6: the IP router
+- [ ] lab7: putting it all together
+
 ### 碎碎念
 
 目前实现了直到 lab4 的所有内容，后续看情况补全 lab5 和 lab6 的代码。
