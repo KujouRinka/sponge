@@ -34,7 +34,7 @@
 //! and learns or replies as necessary.
 class NetworkInterface {
  private:
-  using EthernetAddrWithTime = std::pair<EthernetAddress, uint32_t>;
+  using EthernetAddrWithTime = std::pair<EthernetAddress, uint32_t>;  // <EthAddr, Time>
   using DgramWithHop = std::pair<InternetDatagram, uint32_t>;
   //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
   EthernetAddress _ethernet_address;
@@ -45,8 +45,8 @@ class NetworkInterface {
   //! outbound queue of Ethernet frames that the NetworkInterface wants sent
   std::queue<EthernetFrame> _frames_out{};
 
-  std::unordered_map<uint32_t, EthernetAddrWithTime> _arp_map{};
-  std::unordered_map<uint32_t, uint32_t> _arp_req_time{};
+  std::unordered_map<uint32_t, EthernetAddrWithTime> _arp_map{};  // <ipv4_numeric, EthWithTime>
+  std::unordered_map<uint32_t, uint32_t> _arp_req_time{};   // <ipv4_numeric, ARPReqWaitingTime>
   std::queue<DgramWithHop> _cache_frame{};
 
   void recheckOutQueue();
