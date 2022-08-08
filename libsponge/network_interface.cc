@@ -74,6 +74,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
           && arp.target_ethernet_address == ETHERNET_UNKNOWN
           && arp.target_ip_address == _ip_address.ipv4_numeric()) {
         _arp_map[arp.sender_ip_address] = {arp.sender_ethernet_address, 30000};   // update ARP table
+        _arp_req_time.erase(arp.sender_ip_address);
         ARPMessage arp_reply;
         arp_reply.opcode = ARPMessage::OPCODE_REPLY;
         arp_reply.sender_ethernet_address = _ethernet_address;
@@ -92,6 +93,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
           && arp.target_ethernet_address == _ethernet_address
           && arp.target_ip_address == _ip_address.ipv4_numeric()) {
         _arp_map[arp.sender_ip_address] = {arp.sender_ethernet_address, 30000};
+        _arp_req_time.erase(arp.sender_ip_address);
         recheckOutQueue();
       }
     }
@@ -103,11 +105,11 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) {
-  for (auto &kv : _arp_map) {
-    if (kv.second.second <= ms_since_last_tick)   // do compare, for time has unsigned type
-      _arp_map.erase(kv.first);
+  for (auto it = _arp_map.begin(); it != _arp_map.end();) {
+    if (it->second.second <= ms_since_last_tick)
+      _arp_map.erase(it++);
     else
-      kv.second.second -= ms_since_last_tick;
+      it++->second.second -= ms_since_last_tick;
   }
   for (auto &kv : _arp_req_time)
     kv.second += ms_since_last_tick;
@@ -126,7 +128,7 @@ void NetworkInterface::recheckOutQueue() {
       eth.payload() = dgram.serialize();
       _frames_out.push(std::move(eth));
     } else {
-      _cache_frame.push({dgram, next_hop});
+      _cache_frame.push({std::move(dgram), next_hop});
     }
   }
 }
