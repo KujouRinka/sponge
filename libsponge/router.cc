@@ -18,6 +18,38 @@ using namespace std;
 template<typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
+void Trie::insert(uint32_t prefix, uint8_t length, std::optional<Address> next_hop, size_t interface) {
+  uint8_t mov = 31;
+  auto current = _head;
+  for (uint8_t i = 0; i < length; ++i, --mov) {
+    int idx = prefix & (1 << mov) ? 1 : 0;
+    if (!current->ch[idx])
+      current->ch[idx].reset(new Node);
+    current = current->ch[idx];
+  }
+  current->next_hop = std::move(next_hop);
+  current->interface.emplace(interface);
+}
+
+optional<pair<size_t, optional<Address>>> Trie::match(uint32_t ipv4_addr) {
+  auto current = _head;
+  optional<pair<size_t, optional<Address>>> ret(
+      {current->interface.value(),
+       current->next_hop.has_value() ? optional<Address>(current->next_hop.value()) : nullopt});
+  for (int8_t mov = 31; mov >= 0; --mov) {
+    int idx = ipv4_addr & (1 << mov) ? 1 : 0;
+    if (!current->ch[idx])
+      break;
+    current = current->ch[idx];
+    if (current->interface.has_value()) {
+      ret.emplace(
+          current->interface.value(),
+          current->next_hop.has_value() ? optional<Address>(current->next_hop.value()) : nullopt);
+    }
+  }
+  return ret;
+}
+
 //! \param[in] route_prefix The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
 //! \param[in] prefix_length For this route to be applicable, how many high-order (most-significant) bits of the route_prefix will need to match the corresponding bits of the datagram's destination address?
 //! \param[in] next_hop The IP address of the next hop. Will be empty if the network is directly attached to the router (in which case, the next hop address should be the datagram's final destination).
@@ -28,15 +60,19 @@ void Router::add_route(const uint32_t route_prefix,
                        const size_t interface_num) {
   cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
        << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
-
-  DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-  // Your code here.
+  _route_table.insert(route_prefix, prefix_length, next_hop, interface_num);
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
-  DUMMY_CODE(dgram);
-  // Your code here.
+  if (dgram.header().ttl == 0 || --dgram.header().ttl == 0)
+    return;
+  auto r = _route_table.match(dgram.header().dst);
+  if (!r.has_value())   // drop
+    return;
+  interface(r.value().first).send_datagram(
+      dgram,
+      r.value().second.has_value() ? r.value().second.value() : Address::from_ipv4_numeric(dgram.header().dst));
 }
 
 void Router::route() {

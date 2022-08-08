@@ -8,7 +8,7 @@ For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.ed
 - [x] lab3: the TCP sender
 - [x] lab4: the TCP connection
 - [x] lab5: the network interface
-- [ ] lab6: the IP router
+- [x] lab6: the IP router
 - [ ] lab7: putting it all together
 
 ### 碎碎念
